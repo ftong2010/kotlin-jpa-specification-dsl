@@ -2,6 +2,7 @@ package au.com.console.jpaspecificationdsl
 
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.jpa.domain.Specifications
+import java.io.Serializable
 import javax.persistence.criteria.*
 import kotlin.reflect.KProperty0
 import kotlin.reflect.KProperty1
@@ -17,6 +18,10 @@ fun <Z, X, Y> FetchParent<Z, X>.fetch(prop: KProperty1<X, Y?>, joinType: JoinTyp
 fun <R> Path<*>.get(prop: KProperty1<*, R?>): Path<R> = this.get<R>(prop.name)
 
 fun CriteriaBuilder.and(p: Collection<Predicate>): Predicate = this.and(*p.toTypedArray())
+
+fun <R> CriteriaQuery<*>.asc(path: Path<R>): CriteriaQuery<*> = this.orderBy(OrderImpl(path, true))
+
+fun <R> CriteriaQuery<*>.desc(path: Path<R>): CriteriaQuery<*> = this.orderBy(OrderImpl(path, false))
 
 fun <R> CriteriaBuilder.`in`(path: Path<R>, values: Collection<R>): CriteriaBuilder.In<R> = this.`in`(path).apply { values.forEach { value(it) } }
 
@@ -97,6 +102,23 @@ infix fun <T, R> Specification<T>.fetch(prop: KProperty1<T, R?>): Specification<
 
 infix fun <T, R> Specification<T>.fetch(props: List<KProperty1<T, R?>?>): Specification<T> =
     fetch(*props.filterNotNull().toTypedArray())
+
+infix fun <T, R> Specification<T>.asc(prop: KProperty1<T, R?>): Specification<T> = orderBy(prop to true)
+
+infix fun <T, R> Specification<T>.desc(prop: KProperty1<T, R?>): Specification<T> = orderBy(prop to false)
+
+infix fun <T, R> Specification<T>.orderBy(prop: Pair<KProperty1<T, R?>, Boolean>): Specification<T> {
+    return and { root, query, criteriaBuilder ->
+        query.orderBy(OrderImpl(root.get(prop.first), prop.second))
+        return@and criteriaBuilder.and(listOf())
+    }
+}
+
+class OrderImpl(val exp: Expression<*>, var asc: Boolean = true) : Order, Serializable {
+    override fun reverse(): Order = this.apply { asc = !asc }
+    override fun isAscending(): Boolean = asc
+    override fun getExpression(): Expression<*> = exp
+}
 
 // Or
 infix fun <T> Specification<T>.or(other: Specification<T>) : Specification<T> = this.or(other)
