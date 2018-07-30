@@ -114,7 +114,10 @@ infix fun <T, R> Specification<T>.orderBy(prop: Pair<KProperty1<T, R?>, Boolean>
     }
 }
 
-class OrderImpl(val exp: Expression<*>, var asc: Boolean = true) : Order, Serializable {
+class OrderImpl(
+    private val exp: Expression<*>,
+    private var asc: Boolean = true
+) : Order, Serializable {
     override fun reverse(): Order = this.apply { asc = !asc }
     override fun isAscending(): Boolean = asc
     override fun getExpression(): Expression<*> = exp
